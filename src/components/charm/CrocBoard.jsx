@@ -30,14 +30,14 @@ const CrocBoard = forwardRef(function CrocBoard(
   return (
     <div
       ref={setRefs}
-      className="relative w-full max-w-[520px] mx-auto bg-gray-50 rounded-2xl overflow-hidden"
+      className="relative w-full max-w-[520px] mx-auto aspect-[600/1000] bg-gray-50 rounded-2xl overflow-hidden"
+      style={{
+        backgroundImage: 'url(/croc.png)',
+        backgroundSize: 'contain',
+        backgroundRepeat: 'no-repeat',
+        backgroundPosition: 'center',
+      }}
     >
-      <img
-        src="/croc.png"
-        alt="Croc"
-        draggable={false}
-        className="block w-full h-auto select-none pointer-events-none"
-      />
       {CHARM_ZONES.map((zone) => {
         const charm = placedOnZone(zone.id)
         return (
