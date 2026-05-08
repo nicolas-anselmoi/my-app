@@ -27,13 +27,21 @@ const CrocBoard = forwardRef(function CrocBoard(
   return (
     <div
       ref={setRefs}
-      className="relative w-full max-w-[520px] mx-auto rounded-2xl overflow-hidden"
+      className={
+        debug
+          ? 'relative w-full max-w-[520px] mx-auto rounded-2xl overflow-hidden'
+          : 'relative h-full max-w-[520px] mx-auto rounded-2xl overflow-hidden aspect-[608/1357]'
+      }
     >
       <img
         src="/croc.png"
         alt="Croc"
         draggable={false}
-        className="block w-full h-auto select-none pointer-events-none"
+        className={
+          debug
+            ? 'block w-full h-auto select-none pointer-events-none'
+            : 'block w-full h-full object-contain select-none pointer-events-none'
+        }
         style={
           debug
             ? undefined

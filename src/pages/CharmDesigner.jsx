@@ -66,9 +66,11 @@ const SURFACE_FRICTION = 0.9
 const SETTLE_SPEED = 0.25   // below this speed for several frames -> settled
 const SETTLE_FRAMES = 8
 
-// The bottom of the shoe fades out (see CrocBoard) and the UI overlay sits
-// in that faded zone. Cap how far charms can fall so they rest above the UI.
-const FLOOR_PCT = 0.75
+// Charms rest just above the fixed toolbar — the actual floor percentage is
+// measured at runtime so it adapts to viewport size and toolbar height. This
+// is the fallback if measurement isn't available yet.
+const FLOOR_PCT_FALLBACK = 0.6
+const FLOOR_GAP_PX = 12 // gap between a settled charm and the toolbar's top
 
 export default function CharmDesigner() {
   const [charms, setCharms] = useState([])
@@ -96,6 +98,11 @@ export default function CharmDesigner() {
 
   // charmId -> rAF handle for any in-flight gravity simulation.
   const fallTimersRef = useRef(new Map())
+  // Toolbar element + dynamically computed floor percentage. The toolbar
+  // overlaps the bottom of the shoe, and we need charms to settle just above
+  // it regardless of how much vertical space the toolbar happens to occupy.
+  const toolbarRef = useRef(null)
+  const floorPctRef = useRef(FLOOR_PCT_FALLBACK)
 
   useEffect(() => {
     if (!debug) return
@@ -114,6 +121,36 @@ export default function CharmDesigner() {
     },
     [],
   )
+
+  // Keep floorPctRef in sync with the actual position of the toolbar over
+  // the croc. Re-measures on viewport resize and toolbar height changes
+  // (e.g. when busy/progress text appears).
+  useEffect(() => {
+    if (debug) return
+    function recompute() {
+      const board = boardRef.current
+      const toolbar = toolbarRef.current
+      if (!board || !toolbar) return
+      const b = board.getBoundingClientRect()
+      const t = toolbar.getBoundingClientRect()
+      if (b.height <= 0) return
+      const pct = (t.top - b.top - FLOOR_GAP_PX) / b.height
+      floorPctRef.current = Math.max(0.35, Math.min(0.95, pct))
+    }
+    recompute()
+
+    const ro =
+      typeof ResizeObserver !== 'undefined' ? new ResizeObserver(recompute) : null
+    if (ro) {
+      if (boardRef.current) ro.observe(boardRef.current)
+      if (toolbarRef.current) ro.observe(toolbarRef.current)
+    }
+    window.addEventListener('resize', recompute)
+    return () => {
+      ro?.disconnect()
+      window.removeEventListener('resize', recompute)
+    }
+  }, [debug])
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -176,7 +213,7 @@ export default function CharmDesigner() {
         return
       }
       const rect = board.getBoundingClientRect()
-      const floor = rect.height * FLOOR_PCT - CHARM_SIZE
+      const floor = rect.height * floorPctRef.current - CHARM_SIZE
       const rightWall = rect.width - CHARM_SIZE
 
       // dt normalized to 60fps frames so physics feel consistent.
@@ -441,28 +478,28 @@ export default function CharmDesigner() {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <main className="min-h-full flex flex-col items-center px-6 py-12 sm:py-16">
-        <header className="text-center max-w-2xl mb-10 sm:mb-14">
-          <p className="text-xs sm:text-sm font-bold uppercase tracking-[0.2em] text-[var(--color-mint-strong)] mb-3">
+      <main className="h-full flex flex-col items-center px-6 pt-6 sm:pt-10 pb-2 overflow-hidden">
+        <header className="text-center max-w-2xl shrink-0 mb-3 sm:mb-5">
+          <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-mint-strong)] mb-2">
             Charm Studio
           </p>
-          <h1 className="text-5xl sm:text-6xl md:text-7xl font-black leading-[0.95] tracking-tight text-[var(--color-ink)]">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-black leading-[0.95] tracking-tight text-[var(--color-ink)]">
             Make it
             <span className="relative inline-block ml-3">
               <span className="relative z-10">your own</span>
               <span
                 aria-hidden
-                className="absolute inset-x-[-6px] bottom-1 sm:bottom-2 h-3 sm:h-4 rounded-full bg-[var(--color-coral)]/70 -z-0"
+                className="absolute inset-x-[-6px] bottom-1 sm:bottom-1.5 h-2.5 sm:h-3 rounded-full bg-[var(--color-coral)]/70 -z-0"
               />
             </span>
             .
           </h1>
-          <p className="mt-5 text-base sm:text-lg text-gray-600">
-            Drop in a product image, then drag your new charm onto the shoe.
+          <p className="mt-2 sm:mt-3 text-sm sm:text-base text-gray-600">
+            Drag charms onto your Croc.
           </p>
         </header>
 
-        <section className="relative w-full max-w-[560px]">
+        <section className="flex-1 min-h-0 w-full flex justify-center items-stretch">
           <CrocBoard
             ref={boardRef}
             charms={charms}
@@ -470,29 +507,35 @@ export default function CharmDesigner() {
             zones={zones}
             setZones={setZones}
           />
-
-          {/* UI overlay sits in the faded bottom quarter of the shoe. */}
-          <div className="absolute inset-x-0 bottom-[3%] sm:bottom-[5%] z-10 px-3 flex flex-col items-center gap-3">
-            <button
-              onClick={shuffleSet}
-              disabled={cartBusy}
-              className="px-7 py-3 rounded-full bg-[var(--color-ink)] text-white text-sm font-extrabold tracking-wide hover:bg-black active:scale-[0.98] transition shadow-[0_4px_18px_rgba(31,36,33,0.18)] disabled:bg-gray-300 disabled:cursor-not-allowed"
-            >
-              Shuffle charms
-            </button>
-            {activeSet && (
-              <p className="text-[10px] sm:text-xs uppercase tracking-[0.2em] text-gray-400 font-bold">
-                {activeSet.name} set
-              </p>
-            )}
-            <CartImport
-              onLoad={loadFromCart}
-              busy={cartBusy}
-              progress={cartProgress}
-            />
-          </div>
         </section>
       </main>
+
+      {/* Fixed bottom bar: shuffle button + cart link, always at the device's
+          screen edge so nothing scrolls. */}
+      <div
+        ref={toolbarRef}
+        className="fixed inset-x-0 bottom-0 z-30 bg-[var(--color-canvas)]/95 backdrop-blur-sm px-4 pt-4 pb-[max(env(safe-area-inset-bottom),1rem)]"
+      >
+        <div className="max-w-md mx-auto flex flex-col items-center gap-3">
+          <button
+            onClick={shuffleSet}
+            disabled={cartBusy}
+            className="px-7 py-3 rounded-full bg-[var(--color-ink)] text-white text-sm font-extrabold tracking-wide hover:bg-black active:scale-[0.98] transition shadow-[0_4px_18px_rgba(31,36,33,0.18)] disabled:bg-gray-300 disabled:cursor-not-allowed"
+          >
+            Shuffle charms
+          </button>
+          {activeSet && (
+            <p className="text-[10px] sm:text-xs uppercase tracking-[0.2em] text-gray-400 font-bold -my-1">
+              {activeSet.name} set
+            </p>
+          )}
+          <CartImport
+            onLoad={loadFromCart}
+            busy={cartBusy}
+            progress={cartProgress}
+          />
+        </div>
+      </div>
     </DndContext>
   )
 }
