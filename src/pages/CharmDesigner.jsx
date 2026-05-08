@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { useSearchParams } from 'react-router-dom'
 import CrocBoard from '../components/charm/CrocBoard'
+import CartImport from '../components/charm/CartImport'
 import ZoneTuner from '../components/charm/ZoneTuner'
 import { CHARM_SIZE, CHARM_ZONES, SNAP_THRESHOLD } from '../lib/charmZones'
 import { pickRandomSet } from '../lib/charmSets'
+import { fetchAndCleanImage } from '../lib/removeCharmBg'
 
 const ZONES_STORAGE_KEY = 'charm-zones-tuning'
 
@@ -64,10 +66,16 @@ const SURFACE_FRICTION = 0.9
 const SETTLE_SPEED = 0.25   // below this speed for several frames -> settled
 const SETTLE_FRAMES = 8
 
+// The bottom of the shoe fades out (see CrocBoard) and the UI overlay sits
+// in that faded zone. Cap how far charms can fall so they rest above the UI.
+const FLOOR_PCT = 0.75
+
 export default function CharmDesigner() {
   const [charms, setCharms] = useState([])
   const [placement, setPlacement] = useState({})
   const [activeSet, setActiveSet] = useState(null)
+  const [cartBusy, setCartBusy] = useState(false)
+  const [cartProgress, setCartProgress] = useState(null)
   const boardRef = useRef(null)
   const [params] = useSearchParams()
   const debug = params.get('edit') === '1'
@@ -168,7 +176,7 @@ export default function CharmDesigner() {
         return
       }
       const rect = board.getBoundingClientRect()
-      const floor = rect.height - CHARM_SIZE
+      const floor = rect.height * FLOOR_PCT - CHARM_SIZE
       const rightWall = rect.width - CHARM_SIZE
 
       // dt normalized to 60fps frames so physics feel consistent.
@@ -281,23 +289,73 @@ export default function CharmDesigner() {
     })
   }
 
-  function shuffleSet() {
-    // Cancel anything mid-air, wipe the board, drop a fresh set.
+  function clearBoard() {
     for (const handle of fallTimersRef.current.values()) {
       cancelAnimationFrame(handle)
     }
     fallTimersRef.current.clear()
     setCharms([])
     setPlacement({})
+  }
+
+  function shuffleSet() {
+    clearBoard()
     const next = pickRandomSet(activeSet?.name)
     requestAnimationFrame(() => spawnSet(next))
   }
 
-  // Drop a random set in once the board is mounted.
+  // Pull SKUs out of a Crocs cart URL via the serverless function, then run
+  // each product image through the existing fetch + bg-removal pipeline and
+  // drop the cleaned charms onto the board as a "Custom" set.
+  async function loadFromCart(cartUrl) {
+    if (cartBusy) return
+    setCartBusy(true)
+    setCartProgress('Looking up cart…')
+    clearBoard()
+    setActiveSet({ name: 'Custom', slug: 'custom' })
+
+    try {
+      const res = await fetch(
+        `/api/cart-charms?cartUrl=${encodeURIComponent(cartUrl)}`,
+      )
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(body.error || `Cart lookup failed (${res.status})`)
+      }
+      const list = body.charms || []
+      if (list.length === 0) throw new Error('No charms found in that cart')
+
+      setCartProgress(
+        `Loading ${list.length} charm${list.length === 1 ? '' : 's'}… background removal can take a while.`,
+      )
+
+      let done = 0
+      await Promise.all(
+        list.map(async (item, i) => {
+          try {
+            const cleanedSrc = await fetchAndCleanImage(item.imageUrl)
+            // Slight stagger so charms don't all spawn on the same frame.
+            await new Promise((r) => setTimeout(r, i * 250))
+            addCharm(cleanedSrc)
+          } catch (err) {
+            console.error(`Charm ${item.sku} failed:`, err)
+          } finally {
+            done++
+            setCartProgress(`${done}/${list.length} charms ready`)
+          }
+        }),
+      )
+    } finally {
+      setCartBusy(false)
+      setCartProgress(null)
+    }
+  }
+
+  // Drop a random set in once the board is mounted (unless we're already
+  // loading a custom cart).
   useEffect(() => {
     if (debug) return
-    if (charms.length > 0) return
-    // Wait one paint so the board has measurable bounds.
+    if (charms.length > 0 || cartBusy) return
     const handle = requestAnimationFrame(() => spawnSet(pickRandomSet()))
     return () => cancelAnimationFrame(handle)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -404,7 +462,7 @@ export default function CharmDesigner() {
           </p>
         </header>
 
-        <section className="w-full max-w-[560px] flex justify-center">
+        <section className="relative w-full max-w-[560px]">
           <CrocBoard
             ref={boardRef}
             charms={charms}
@@ -412,20 +470,27 @@ export default function CharmDesigner() {
             zones={zones}
             setZones={setZones}
           />
-        </section>
 
-        <section className="w-full max-w-xl mt-10 sm:mt-14 flex flex-col items-center gap-3">
-          <button
-            onClick={shuffleSet}
-            className="px-7 py-3 rounded-full bg-[var(--color-ink)] text-white text-sm font-extrabold tracking-wide hover:bg-black active:scale-[0.98] transition shadow-[0_4px_18px_rgba(31,36,33,0.18)]"
-          >
-            Shuffle charms
-          </button>
-          {activeSet && (
-            <p className="text-xs uppercase tracking-[0.2em] text-gray-400 font-bold">
-              {activeSet.name} set
-            </p>
-          )}
+          {/* UI overlay sits in the faded bottom quarter of the shoe. */}
+          <div className="absolute inset-x-0 bottom-[3%] sm:bottom-[5%] z-10 px-3 flex flex-col items-center gap-3">
+            <button
+              onClick={shuffleSet}
+              disabled={cartBusy}
+              className="px-7 py-3 rounded-full bg-[var(--color-ink)] text-white text-sm font-extrabold tracking-wide hover:bg-black active:scale-[0.98] transition shadow-[0_4px_18px_rgba(31,36,33,0.18)] disabled:bg-gray-300 disabled:cursor-not-allowed"
+            >
+              Shuffle charms
+            </button>
+            {activeSet && (
+              <p className="text-[10px] sm:text-xs uppercase tracking-[0.2em] text-gray-400 font-bold">
+                {activeSet.name} set
+              </p>
+            )}
+            <CartImport
+              onLoad={loadFromCart}
+              busy={cartBusy}
+              progress={cartProgress}
+            />
+          </div>
         </section>
       </main>
     </DndContext>

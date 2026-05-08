@@ -34,6 +34,16 @@ const CrocBoard = forwardRef(function CrocBoard(
         alt="Croc"
         draggable={false}
         className="block w-full h-auto select-none pointer-events-none"
+        style={
+          debug
+            ? undefined
+            : {
+                maskImage:
+                  'linear-gradient(to bottom, #000 50%, transparent 95%)',
+                WebkitMaskImage:
+                  'linear-gradient(to bottom, #000 50%, transparent 95%)',
+              }
+        }
       />
 
       {debug ? (
