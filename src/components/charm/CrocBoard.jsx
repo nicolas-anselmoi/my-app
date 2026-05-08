@@ -1,4 +1,4 @@
-import { forwardRef } from 'react'
+import { forwardRef, useEffect, useRef } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import DropZone from './DropZone'
 import EditableZones from './EditableZones'
@@ -6,16 +6,36 @@ import Charm from './Charm'
 import { CHARM_SIZE } from '../../lib/charmZones'
 
 const CrocBoard = forwardRef(function CrocBoard(
-  { charms, placement, zones, setZones, debug = false },
+  { charms, placement, zones, setZones, debug = false, shoeShakeKey = 0 },
   ref,
 ) {
   const { setNodeRef: setBoardRef } = useDroppable({ id: 'board' })
+  const imgRef = useRef(null)
 
   const setRefs = (el) => {
     setBoardRef(el)
     if (typeof ref === 'function') ref(el)
     else if (ref) ref.current = el
   }
+
+  // Replay a tiny shake on the shoe whenever the snap key changes. Web
+  // Animations API lets us re-trigger the same animation as many times as
+  // we like without React having to remount the <img>.
+  useEffect(() => {
+    if (debug || shoeShakeKey === 0) return
+    const el = imgRef.current
+    if (!el || typeof el.animate !== 'function') return
+    el.animate(
+      [
+        { transform: 'translateX(0)' },
+        { transform: 'translateX(-1.2px)', offset: 0.2 },
+        { transform: 'translateX(0.9px)', offset: 0.5 },
+        { transform: 'translateX(-0.4px)', offset: 0.8 },
+        { transform: 'translateX(0)' },
+      ],
+      { duration: 200, easing: 'ease-out' },
+    )
+  }, [shoeShakeKey, debug])
 
   const placedOnZone = (zoneId) =>
     charms.find(
@@ -34,6 +54,7 @@ const CrocBoard = forwardRef(function CrocBoard(
       }
     >
       <img
+        ref={imgRef}
         src="/croc.png"
         alt="Croc"
         draggable={false}
@@ -47,9 +68,9 @@ const CrocBoard = forwardRef(function CrocBoard(
             ? undefined
             : {
                 maskImage:
-                  'linear-gradient(to bottom, #000 50%, transparent 95%)',
+                  'linear-gradient(to bottom, #000 50%, transparent 75%)',
                 WebkitMaskImage:
-                  'linear-gradient(to bottom, #000 50%, transparent 95%)',
+                  'linear-gradient(to bottom, #000 50%, transparent 75%)',
               }
         }
       />
@@ -74,7 +95,7 @@ const CrocBoard = forwardRef(function CrocBoard(
           return (
             <div
               key={`placed-${zone.id}`}
-              className="absolute"
+              className={`absolute ${charm.justSnapped ? 'animate-charm-snap' : ''}`}
               style={{
                 left: `${zone.x}%`,
                 top: `${zone.y}%`,
