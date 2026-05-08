@@ -1,0 +1,40 @@
+{
+  "sets": [
+    {
+      "name": "Animals",
+      "slug": "animals",
+      "urls": [
+        "https://crocscl.vtexassets.com/arquivos/ids/263609/10019925_R00_1.jpg?v=639065912126230000?width=1200&height=auto",
+        "https://crocscl.vtexassets.com/arquivos/ids/254164/10017620_R00_1.jpg?v=639056400474100000?width=1200&height=auto",
+        "https://crocscl.vtexassets.com/arquivos/ids/245995/10009453_R00_1.jpg?v=639026142398700000?width=1200&height=auto",
+        "https://crocscl.vtexassets.com/arquivos/ids/163161/10014570_R00_1.jpg?v=638714444119370000?width=1200&height=auto",
+        "https://crocscl.vtexassets.com/arquivos/ids/186982/10014890_R00_1.jpg?v=638729771976630000?width=1200&height=auto",
+        "https://crocscl.vtexassets.com/arquivos/ids/208616/10011210_R00_1.jpg?v=638756678596370000?width=1200&height=auto"
+      ]
+    },
+    {
+      "name": "Letters",
+      "slug": "letters",
+      "urls": [
+        "https://crocscl.vtexassets.com/arquivos/ids/163132/10006994_R00_1.jpg?v=638714441930770000?width=1200&height=auto",
+        "https://crocscl.vtexassets.com/arquivos/ids/208489/10006949_R00_1.jpg?v=638756678085170000?width=1200&height=auto",
+        "https://crocscl.vtexassets.com/arquivos/ids/208506/10007001_R00_1.jpg?v=638756678153200000?width=1200&height=auto",
+        "https://crocscl.vtexassets.com/arquivos/ids/208536/10007017_R00_1.jpg?v=638756678275400000?width=1200&height=auto",
+        "https://crocscl.vtexassets.com/arquivos/ids/163174/10006957_R00_1.jpg?v=638714444964100000?width=1200&height=auto",
+        "https://crocscl.vtexassets.com/arquivos/ids/208500/10006996_R00_1.jpg?v=638756678129500000?width=1200&height=auto"
+      ]
+    },
+    {
+      "name": "Food and Drink",
+      "slug": "food-and-drink",
+      "urls": [
+        "https://crocscl.vtexassets.com/arquivos/ids/208562/10008133_R00_1.jpg?v=638756678379770000?width=1200&height=auto",
+        "https://crocscl.vtexassets.com/arquivos/ids/167071/10014847_R00_1.jpg?v=638720431205570000?width=1200&height=auto",
+        "https://crocscl.vtexassets.com/arquivos/ids/167018/10014773_R00_1.jpg?v=638720426773300000?width=1200&height=auto",
+        "https://crocscl.vtexassets.com/arquivos/ids/186407/10008184_R00_1.jpg?v=638729770052200000?width=1200&height=auto",
+        "https://crocscl.vtexassets.com/arquivos/ids/242118/10016699_R00_1.jpg?v=638920676569970000?width=1200&height=auto",
+        "https://crocscl.vtexassets.com/arquivos/ids/187039/10008179_R00_1.jpg?v=638729772170370000?width=1200&height=auto"
+      ]
+    }
+  ]
+}

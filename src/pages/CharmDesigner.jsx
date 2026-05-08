@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { useSearchParams } from 'react-router-dom'
 import CrocBoard from '../components/charm/CrocBoard'
-import UrlImport from '../components/charm/UrlImport'
 import ZoneTuner from '../components/charm/ZoneTuner'
 import { CHARM_SIZE, CHARM_ZONES, SNAP_THRESHOLD } from '../lib/charmZones'
+import { pickRandomSet } from '../lib/charmSets'
 
 const ZONES_STORAGE_KEY = 'charm-zones-tuning'
 
@@ -67,6 +67,7 @@ const SETTLE_FRAMES = 8
 export default function CharmDesigner() {
   const [charms, setCharms] = useState([])
   const [placement, setPlacement] = useState({})
+  const [activeSet, setActiveSet] = useState(null)
   const boardRef = useRef(null)
   const [params] = useSearchParams()
   const debug = params.get('edit') === '1'
@@ -273,6 +274,35 @@ export default function CharmDesigner() {
     requestAnimationFrame(() => startFall(id, spawn.x, spawn.y))
   }
 
+  function spawnSet(set) {
+    setActiveSet(set)
+    set.charms.forEach((src, i) => {
+      window.setTimeout(() => addCharm(src), i * 220)
+    })
+  }
+
+  function shuffleSet() {
+    // Cancel anything mid-air, wipe the board, drop a fresh set.
+    for (const handle of fallTimersRef.current.values()) {
+      cancelAnimationFrame(handle)
+    }
+    fallTimersRef.current.clear()
+    setCharms([])
+    setPlacement({})
+    const next = pickRandomSet(activeSet?.name)
+    requestAnimationFrame(() => spawnSet(next))
+  }
+
+  // Drop a random set in once the board is mounted.
+  useEffect(() => {
+    if (debug) return
+    if (charms.length > 0) return
+    // Wait one paint so the board has measurable bounds.
+    const handle = requestAnimationFrame(() => spawnSet(pickRandomSet()))
+    return () => cancelAnimationFrame(handle)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debug])
+
   function handleDragStart(event) {
     cancelFall(event.active.id)
   }
@@ -384,8 +414,18 @@ export default function CharmDesigner() {
           />
         </section>
 
-        <section className="w-full max-w-xl mt-10 sm:mt-14">
-          <UrlImport onAdd={addCharm} />
+        <section className="w-full max-w-xl mt-10 sm:mt-14 flex flex-col items-center gap-3">
+          <button
+            onClick={shuffleSet}
+            className="px-7 py-3 rounded-full bg-[var(--color-ink)] text-white text-sm font-extrabold tracking-wide hover:bg-black active:scale-[0.98] transition shadow-[0_4px_18px_rgba(31,36,33,0.18)]"
+          >
+            Shuffle charms
+          </button>
+          {activeSet && (
+            <p className="text-xs uppercase tracking-[0.2em] text-gray-400 font-bold">
+              {activeSet.name} set
+            </p>
+          )}
         </section>
       </main>
     </DndContext>
