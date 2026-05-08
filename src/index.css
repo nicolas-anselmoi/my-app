@@ -1,1 +1,26 @@
 @import "tailwindcss";
+
+@theme {
+  --font-sans: "Nunito", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Nunito", ui-sans-serif, system-ui, sans-serif;
+
+  /* Playful palette: soft cream canvas, mint accent, warm coral pop. */
+  --color-canvas: #fdfaf3;
+  --color-ink: #1f2421;
+  --color-mint: #c8ecd1;
+  --color-mint-strong: #5cb87a;
+  --color-coral: #ff6f59;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+}

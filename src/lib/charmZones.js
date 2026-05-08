@@ -15,5 +15,5 @@ export const CHARM_ZONES = [
   { id: 'z13', x: 80.3, y: 36.7 },
 ]
 
-export const CHARM_SIZE = 56  // px on screen
-export const SNAP_THRESHOLD = 60  // px from zone center to snap
+export const CHARM_SIZE = 72  // px on screen
+export const SNAP_THRESHOLD = 70  // px from zone center to snap
