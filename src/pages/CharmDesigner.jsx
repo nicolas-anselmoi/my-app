@@ -78,6 +78,8 @@ export default function CharmDesigner() {
   const [activeSet, setActiveSet] = useState(null)
   const [cartBusy, setCartBusy] = useState(false)
   const [cartProgress, setCartProgress] = useState(null)
+  // Bumped on every snap so CrocBoard can replay a brief shake on the shoe.
+  const [shoeShakeKey, setShoeShakeKey] = useState(0)
   const boardRef = useRef(null)
   const [params] = useSearchParams()
   const debug = params.get('edit') === '1'
@@ -414,6 +416,18 @@ export default function CharmDesigner() {
       )
       if (!occupant) {
         setPlacement((p) => ({ ...p, [charmId]: { kind: 'zone', zoneId } }))
+        // Trigger the snap squash on the charm and a tiny shake on the shoe.
+        setCharms((prev) =>
+          prev.map((c) => (c.id === charmId ? { ...c, justSnapped: true } : c)),
+        )
+        setShoeShakeKey((k) => k + 1)
+        window.setTimeout(() => {
+          setCharms((prev) =>
+            prev.map((c) =>
+              c.id === charmId ? { ...c, justSnapped: false } : c,
+            ),
+          )
+        }, 320)
         return
       }
       // Zone occupied -> fall through, gravity takes over.
@@ -506,6 +520,7 @@ export default function CharmDesigner() {
             placement={placement}
             zones={zones}
             setZones={setZones}
+            shoeShakeKey={shoeShakeKey}
           />
         </section>
       </main>

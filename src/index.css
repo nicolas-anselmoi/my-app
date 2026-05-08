@@ -24,3 +24,17 @@ body {
   color: var(--color-ink);
   -webkit-font-smoothing: antialiased;
 }
+
+/* Quick squash when a charm snaps into a hole. Layered on top of the
+   wrapper's translate(-50%, -50%) centering. */
+@keyframes charm-snap {
+  0%   { transform: translate(-50%, -50%) scale(1)    rotate(0deg); }
+  30%  { transform: translate(-50%, -50%) scale(1.07) rotate(-1.5deg); }
+  60%  { transform: translate(-50%, -50%) scale(0.99) rotate(0.8deg); }
+  100% { transform: translate(-50%, -50%) scale(1)    rotate(0deg); }
+}
+
+.animate-charm-snap {
+  animation: charm-snap 280ms ease-out;
+  transform-origin: center center;
+}

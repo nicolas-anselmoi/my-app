@@ -1,7 +1,7 @@
 // Hole positions on public/croc.png as percentages (0–100). Tune via /?edit=1.
 export const CHARM_ZONES = [
-  { id: 'z1', x: 40.0, y: 12.0 },
-  { id: 'z2', x: 59.1, y: 14.4 },
+  { id: 'z1', x: 39.6, y: 11.2 },
+  { id: 'z2', x: 58.9, y: 14.7 },
   { id: 'z3', x: 26.3, y: 17.9 },
   { id: 'z4', x: 41.6, y: 19.4 },
   { id: 'z5', x: 56.6, y: 22.3 },
