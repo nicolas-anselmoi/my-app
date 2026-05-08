@@ -1,10 +1,13 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
 import { useSearchParams } from 'react-router-dom'
 import CrocBoard from '../components/charm/CrocBoard'
 import Drawer from '../components/charm/Drawer'
 import UrlImport from '../components/charm/UrlImport'
+import ZoneTuner from '../components/charm/ZoneTuner'
 import { CHARM_ZONES, SNAP_THRESHOLD } from '../lib/charmZones'
+
+const ZONES_STORAGE_KEY = 'charm-zones-tuning'
 
 let nextId = 1
 const makeId = () => `charm-${nextId++}`
@@ -38,12 +41,40 @@ function snapCollision({ droppableContainers, collisionRect }) {
   return []
 }
 
+function loadStoredZones() {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = window.localStorage.getItem(ZONES_STORAGE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed) || parsed.length !== CHARM_ZONES.length) return null
+    return parsed
+  } catch {
+    return null
+  }
+}
+
 export default function CharmDesigner() {
   const [charms, setCharms] = useState([])
   const [placement, setPlacement] = useState({})
   const boardRef = useRef(null)
   const [params] = useSearchParams()
   const debug = params.get('edit') === '1'
+
+  // In edit mode, restore in-progress tuning from localStorage so refreshing
+  // doesn't lose your work. In view mode, always use the canonical source.
+  const [zones, setZones] = useState(() =>
+    debug
+      ? loadStoredZones() || CHARM_ZONES.map((z) => ({ ...z }))
+      : CHARM_ZONES.map((z) => ({ ...z })),
+  )
+
+  useEffect(() => {
+    if (!debug) return
+    try {
+      window.localStorage.setItem(ZONES_STORAGE_KEY, JSON.stringify(zones))
+    } catch {}
+  }, [zones, debug])
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -58,7 +89,6 @@ export default function CharmDesigner() {
     const charmId = active.id
 
     if (!over) {
-      // Released outside any droppable -> back to drawer
       setPlacement((p) => {
         const next = { ...p }
         delete next[charmId]
@@ -89,7 +119,7 @@ export default function CharmDesigner() {
       const occupant = Object.entries(placement).find(
         ([cid, p]) => cid !== charmId && p?.kind === 'zone' && p.zoneId === zoneId,
       )
-      if (occupant) return // one-per-zone, reject
+      if (occupant) return
       setPlacement((p) => ({ ...p, [charmId]: { kind: 'zone', zoneId } }))
     }
   }
@@ -101,7 +131,9 @@ export default function CharmDesigner() {
       onDragEnd={handleDragEnd}
     >
       <main className="max-w-6xl mx-auto px-6 py-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">Charm Designer</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-6">
+          Charm Designer{debug && <span className="text-base font-normal text-blue-600 ml-2">— edit mode</span>}
+        </h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
           <div>
@@ -109,18 +141,26 @@ export default function CharmDesigner() {
               ref={boardRef}
               charms={charms}
               placement={placement}
+              zones={zones}
+              setZones={setZones}
               debug={debug}
             />
             {debug && (
               <p className="mt-3 text-xs text-gray-500 text-center">
-                Edit mode: drop zones outlined in blue. {CHARM_ZONES.length} zones defined.
+                Drag the numbered circles to position each hole. Changes persist in this browser.
               </p>
             )}
           </div>
 
           <div className="space-y-4">
-            <UrlImport onAdd={addCharm} />
-            <Drawer charms={charms} placement={placement} />
+            {debug ? (
+              <ZoneTuner zones={zones} setZones={setZones} />
+            ) : (
+              <>
+                <UrlImport onAdd={addCharm} />
+                <Drawer charms={charms} placement={placement} />
+              </>
+            )}
           </div>
         </div>
       </main>
