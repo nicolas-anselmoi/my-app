@@ -23,33 +23,40 @@ export default function UrlImport({ onAdd }) {
   }
 
   return (
-    <form onSubmit={submit} className="border border-gray-200 rounded-2xl p-4 bg-white">
-      <label className="block text-sm font-semibold text-gray-700 mb-2">
-        Add a charm from an image URL
+    <form
+      onSubmit={submit}
+      className="bg-white rounded-3xl p-5 sm:p-6 shadow-[0_4px_24px_rgba(31,36,33,0.06)] border border-black/[0.04]"
+    >
+      <label className="block text-sm font-bold mb-3 text-center">
+        Add a charm from any product image
       </label>
-      <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row gap-2">
         <input
           type="url"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
-          placeholder="https://example.com/product.jpg"
+          placeholder="Paste an image URL"
           disabled={busy}
-          className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="flex-1 bg-[var(--color-canvas)] border border-black/[0.06] rounded-full px-5 py-3 text-sm font-medium placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[var(--color-mint-strong)] focus:border-transparent transition"
         />
         <button
           type="submit"
           disabled={busy || !url.trim()}
-          className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium disabled:bg-gray-300"
+          className="px-6 py-3 rounded-full bg-[var(--color-ink)] text-white text-sm font-extrabold hover:bg-black active:scale-[0.98] transition disabled:bg-gray-300 disabled:cursor-not-allowed"
         >
-          {busy ? 'Working…' : 'Add'}
+          {busy ? 'Working…' : 'Add charm'}
         </button>
       </div>
       {busy && (
-        <p className="mt-2 text-xs text-gray-500">
-          Fetching image and removing background — first run may take a minute (model download).
+        <p className="mt-3 text-xs text-gray-500 text-center">
+          First time may take a minute — downloading the background remover.
         </p>
       )}
-      {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+      {error && (
+        <p className="mt-3 text-xs font-semibold text-[var(--color-coral)] text-center">
+          {error}
+        </p>
+      )}
     </form>
   )
 }

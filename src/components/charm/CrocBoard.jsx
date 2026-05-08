@@ -27,7 +27,7 @@ const CrocBoard = forwardRef(function CrocBoard(
   return (
     <div
       ref={setRefs}
-      className="relative w-full max-w-[520px] mx-auto bg-gray-50 rounded-2xl overflow-hidden"
+      className="relative w-full max-w-[520px] mx-auto rounded-2xl overflow-hidden"
     >
       <img
         src="/croc.png"
