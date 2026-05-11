@@ -105,6 +105,12 @@ export default function CharmDesigner() {
   // it regardless of how much vertical space the toolbar happens to occupy.
   const toolbarRef = useRef(null)
   const floorPctRef = useRef(FLOOR_PCT_FALLBACK)
+  // Which charm is currently being dragged, so the global pinch handler knows
+  // which one to transform. Set in onDragStart, cleared in onDragEnd.
+  const activeCharmIdRef = useRef(null)
+  // Initial pinch geometry captured the moment a 2nd finger lands; deltas
+  // are computed against this on subsequent touchmove events.
+  const pinchStateRef = useRef(null)
 
   useEffect(() => {
     if (!debug) return
@@ -123,6 +129,82 @@ export default function CharmDesigner() {
     },
     [],
   )
+
+  // While a charm is being grabbed, two-finger gestures pinch (scale) and
+  // twist (rotate) it. The handlers run on the document so the second finger
+  // can land anywhere on the screen.
+  useEffect(() => {
+    if (debug) return
+
+    function readPinch(touches) {
+      if (touches.length < 2) return null
+      const a = touches[0]
+      const b = touches[1]
+      const dx = b.clientX - a.clientX
+      const dy = b.clientY - a.clientY
+      return {
+        distance: Math.hypot(dx, dy),
+        angle: (Math.atan2(dy, dx) * 180) / Math.PI,
+      }
+    }
+
+    function onTouchStart(e) {
+      const charmId = activeCharmIdRef.current
+      if (!charmId || e.touches.length < 2) return
+      const p = readPinch(e.touches)
+      if (!p) return
+      const charm = charmsRef.current.find((c) => c.id === charmId)
+      pinchStateRef.current = {
+        distance: p.distance,
+        angle: p.angle,
+        startScale: charm?.scale ?? 1,
+        startRotation: charm?.rotation ?? 0,
+      }
+    }
+
+    function onTouchMove(e) {
+      const charmId = activeCharmIdRef.current
+      const start = pinchStateRef.current
+      if (!charmId || !start || e.touches.length < 2) return
+      e.preventDefault()
+      const p = readPinch(e.touches)
+      if (!p) return
+      const scaleFactor = p.distance / start.distance
+      let angleDelta = p.angle - start.angle
+      // Normalize to [-180, 180] so a small twist past the +/-180 boundary
+      // doesn't snap the charm around.
+      while (angleDelta > 180) angleDelta -= 360
+      while (angleDelta < -180) angleDelta += 360
+
+      const nextScale = clamp(start.startScale * scaleFactor, 0.4, 2.5)
+      const nextRotation = start.startRotation + angleDelta
+
+      setCharms((prev) =>
+        prev.map((c) =>
+          c.id === charmId
+            ? { ...c, scale: nextScale, rotation: nextRotation }
+            : c,
+        ),
+      )
+    }
+
+    function onTouchEnd(e) {
+      if (e.touches.length < 2) {
+        pinchStateRef.current = null
+      }
+    }
+
+    document.addEventListener('touchstart', onTouchStart, { passive: false })
+    document.addEventListener('touchmove', onTouchMove, { passive: false })
+    document.addEventListener('touchend', onTouchEnd)
+    document.addEventListener('touchcancel', onTouchEnd)
+    return () => {
+      document.removeEventListener('touchstart', onTouchStart)
+      document.removeEventListener('touchmove', onTouchMove)
+      document.removeEventListener('touchend', onTouchEnd)
+      document.removeEventListener('touchcancel', onTouchEnd)
+    }
+  }, [debug])
 
   // Keep floorPctRef in sync with the actual position of the toolbar over
   // the croc. Re-measures on viewport resize and toolbar height changes
@@ -158,9 +240,9 @@ export default function CharmDesigner() {
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
   )
 
-  // Top-left pixel positions of every other charm currently visible on the
-  // board, used as obstacles for collision/physics. Reads from refs so callers
-  // inside rAF ticks always see fresh state.
+  // Top-left pixel positions + scale of every other charm currently visible
+  // on the board. Scale matters for collision: a charm scaled to 2x has a
+  // larger visual hit-circle even though its layout box stays CHARM_SIZE.
   function getObstacles(excludeId) {
     const board = boardRef.current
     if (!board) return []
@@ -173,14 +255,16 @@ export default function CharmDesigner() {
       if (c.id === excludeId) continue
       const p = currentPlacement[c.id]
       if (!p) continue
+      const scale = c.scale ?? 1
       if (p.kind === 'floating') {
-        out.push({ x: p.x, y: p.y })
+        out.push({ x: p.x, y: p.y, scale })
       } else if (p.kind === 'zone') {
         const z = currentZones.find((zz) => zz.id === p.zoneId)
         if (z) {
           out.push({
             x: (z.x / 100) * rect.width - CHARM_SIZE / 2,
             y: (z.y / 100) * rect.height - CHARM_SIZE / 2,
+            scale,
           })
         }
       }
@@ -215,8 +299,20 @@ export default function CharmDesigner() {
         return
       }
       const rect = board.getBoundingClientRect()
-      const floor = rect.height * floorPctRef.current - CHARM_SIZE
-      const rightWall = rect.width - CHARM_SIZE
+      // Visual extent depends on the charm's user-applied scale: a scaled
+      // charm bulges past its CHARM_SIZE wrapper, so floor and walls need to
+      // account for that to keep the visible image inside the shoe.
+      const selfCharm = charmsRef.current.find((c) => c.id === charmId)
+      const selfScale = selfCharm?.scale ?? 1
+      const selfHalf = (CHARM_SIZE * selfScale) / 2
+      const selfRadius = selfHalf
+      const wrapperHalf = CHARM_SIZE / 2
+      // Top-left of wrapper -> visual edges add (selfHalf - wrapperHalf) on
+      // each side. Compute floor/walls so the visible image stays in bounds.
+      const edgeBleed = selfHalf - wrapperHalf
+      const floor = rect.height * floorPctRef.current - CHARM_SIZE - edgeBleed
+      const leftWall = edgeBleed
+      const rightWall = rect.width - CHARM_SIZE - edgeBleed
 
       // dt normalized to 60fps frames so physics feel consistent.
       const dt = Math.min((now - lastT) / (1000 / 60), 2.5)
@@ -237,22 +333,25 @@ export default function CharmDesigner() {
       }
 
       // Walls
-      if (x < 0) {
-        x = 0
+      if (x < leftWall) {
+        x = leftWall
         if (vx < 0) vx = -vx * WALL_BOUNCE
       } else if (x > rightWall) {
         x = rightWall
         if (vx > 0) vx = -vx * WALL_BOUNCE
       }
 
-      // Other charms — treat as circles of diameter CHARM_SIZE.
+      // Other charms — treated as circles whose radius depends on the
+      // charm's user-applied scale.
       const obstacles = getObstacles(charmId)
       for (const o of obstacles) {
         const dx = x - o.x
         const dy = y - o.y
         const dist = Math.hypot(dx, dy)
-        if (dist < CHARM_SIZE) {
-          const overlap = CHARM_SIZE - dist
+        const otherRadius = (CHARM_SIZE * (o.scale ?? 1)) / 2
+        const minDist = selfRadius + otherRadius
+        if (dist < minDist) {
+          const overlap = minDist - dist
           const nx = dist < 0.001 ? 0 : dx / dist
           const ny = dist < 0.001 ? -1 : dy / dist
           // Position correction
@@ -402,9 +501,12 @@ export default function CharmDesigner() {
 
   function handleDragStart(event) {
     cancelFall(event.active.id)
+    activeCharmIdRef.current = event.active.id
   }
 
   function handleDragEnd(event) {
+    activeCharmIdRef.current = null
+    pinchStateRef.current = null
     const { active, over } = event
     const charmId = active.id
 

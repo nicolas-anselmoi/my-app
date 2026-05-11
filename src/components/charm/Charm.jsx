@@ -2,11 +2,28 @@ import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { CHARM_SIZE } from '../../lib/charmZones'
 
-export default function Charm({ id, src, style, className = '' }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id })
+export default function Charm({
+  id,
+  src,
+  scale = 1,
+  rotation = 0,
+  style,
+  className = '',
+}) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } =
+    useDraggable({ id })
+
+  // Layer the user's pinch/rotate on top of dnd-kit's drag translate.
+  const dragTranslate = CSS.Translate.toString(transform) || ''
+  const userTransform =
+    scale !== 1 || rotation !== 0
+      ? `scale(${scale}) rotate(${rotation}deg)`
+      : ''
+  const finalTransform =
+    [dragTranslate, userTransform].filter(Boolean).join(' ') || undefined
 
   const dragStyle = {
-    transform: CSS.Translate.toString(transform),
+    transform: finalTransform,
     width: CHARM_SIZE,
     height: CHARM_SIZE,
     opacity: isDragging ? 0.85 : 1,

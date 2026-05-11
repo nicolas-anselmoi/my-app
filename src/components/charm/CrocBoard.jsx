@@ -104,7 +104,12 @@ const CrocBoard = forwardRef(function CrocBoard(
                 transform: 'translate(-50%, -50%)',
               }}
             >
-              <Charm id={charm.id} src={charm.src} />
+              <Charm
+                id={charm.id}
+                src={charm.src}
+                scale={charm.scale}
+                rotation={charm.rotation}
+              />
             </div>
           )
         })}
@@ -118,7 +123,7 @@ const CrocBoard = forwardRef(function CrocBoard(
               className="absolute"
               style={{ left: p.x, top: p.y, width: CHARM_SIZE, height: CHARM_SIZE }}
             >
-              <Charm id={c.id} src={c.src} />
+              <Charm id={c.id} src={c.src} scale={c.scale} rotation={c.rotation} />
             </div>
           )
         })}
