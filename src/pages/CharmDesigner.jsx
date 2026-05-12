@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { DndContext, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
+import { DndContext, useSensor, useSensors } from '@dnd-kit/core'
+import { SinglePointerSensor } from '../lib/SinglePointerSensor'
 import { useSearchParams } from 'react-router-dom'
 import CrocBoard from '../components/charm/CrocBoard'
 import CartImport from '../components/charm/CartImport'
@@ -237,7 +238,7 @@ export default function CharmDesigner() {
   }, [debug])
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(SinglePointerSensor, { activationConstraint: { distance: 4 } }),
   )
 
   // Top-left pixel positions + scale of every other charm currently visible
