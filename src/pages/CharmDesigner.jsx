@@ -8,6 +8,7 @@ import ZoneTuner from '../components/charm/ZoneTuner'
 import { CHARM_SIZE, CHARM_ZONES, SNAP_THRESHOLD } from '../lib/charmZones'
 import { pickRandomSet } from '../lib/charmSets'
 import { fetchAndCleanImage } from '../lib/removeCharmBg'
+import { exportCharmImage, shareOrDownload } from '../lib/exportCharmImage'
 
 const ZONES_STORAGE_KEY = 'charm-zones-tuning'
 
@@ -79,6 +80,7 @@ export default function CharmDesigner() {
   const [activeSet, setActiveSet] = useState(null)
   const [cartBusy, setCartBusy] = useState(false)
   const [cartProgress, setCartProgress] = useState(null)
+  const [exporting, setExporting] = useState(false)
   // Bumped on every snap so CrocBoard can replay a brief shake on the shoe.
   const [shoeShakeKey, setShoeShakeKey] = useState(0)
   const boardRef = useRef(null)
@@ -500,6 +502,23 @@ export default function CharmDesigner() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debug])
 
+  async function handleExport() {
+    if (exporting) return
+    setExporting(true)
+    try {
+      const blob = await exportCharmImage({ placement, charms, zones })
+      await shareOrDownload(blob)
+    } catch (err) {
+      console.error('Export failed:', err)
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const placedCount = Object.values(placement).filter(
+    (p) => p?.kind === 'zone',
+  ).length
+
   function handleDragStart(event) {
     cancelFall(event.active.id)
     activeCharmIdRef.current = event.active.id
@@ -635,13 +654,27 @@ export default function CharmDesigner() {
         className="fixed inset-x-0 bottom-0 z-30 bg-[var(--color-canvas)]/95 backdrop-blur-sm px-4 pt-4 pb-[max(env(safe-area-inset-bottom),1rem)]"
       >
         <div className="max-w-md mx-auto flex flex-col items-center gap-3">
-          <button
-            onClick={shuffleSet}
-            disabled={cartBusy}
-            className="px-7 py-3 rounded-full bg-[var(--color-ink)] text-white text-sm font-extrabold tracking-wide hover:bg-black active:scale-[0.98] transition shadow-[0_4px_18px_rgba(31,36,33,0.18)] disabled:bg-gray-300 disabled:cursor-not-allowed"
-          >
-            Shuffle charms
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={shuffleSet}
+              disabled={cartBusy || exporting}
+              className="px-6 py-3 rounded-full bg-[var(--color-ink)] text-white text-sm font-extrabold tracking-wide hover:bg-black active:scale-[0.98] transition shadow-[0_4px_18px_rgba(31,36,33,0.18)] disabled:bg-gray-300 disabled:cursor-not-allowed"
+            >
+              Shuffle charms
+            </button>
+            <button
+              onClick={handleExport}
+              disabled={exporting || cartBusy || placedCount === 0}
+              title={
+                placedCount === 0
+                  ? 'Place at least one charm in a hole first'
+                  : 'Save / share your shoe'
+              }
+              className="px-5 py-3 rounded-full bg-[var(--color-mint-strong)] text-white text-sm font-extrabold tracking-wide hover:brightness-95 active:scale-[0.98] transition shadow-[0_4px_18px_rgba(31,36,33,0.18)] disabled:bg-gray-300 disabled:cursor-not-allowed"
+            >
+              {exporting ? 'Saving…' : 'Save'}
+            </button>
+          </div>
           {activeSet && (
             <p className="text-[10px] sm:text-xs uppercase tracking-[0.2em] text-gray-400 font-bold -my-1">
               {activeSet.name} set
