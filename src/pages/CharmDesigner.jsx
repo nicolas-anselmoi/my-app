@@ -451,7 +451,7 @@ export default function CharmDesigner() {
   async function loadFromCart(cartUrl) {
     if (cartBusy) return
     setCartBusy(true)
-    setCartProgress('Looking up cart…')
+    setCartProgress('Buscando tu carrito')
     clearBoard()
     setActiveSet({ name: 'Custom', slug: 'custom' })
 
@@ -466,11 +466,8 @@ export default function CharmDesigner() {
       const list = body.charms || []
       if (list.length === 0) throw new Error('No charms found in that cart')
 
-      setCartProgress(
-        `Loading ${list.length} charm${list.length === 1 ? '' : 's'}… background removal can take a while.`,
-      )
+      setCartProgress(`Cargando ${list.length} charms`)
 
-      let done = 0
       await Promise.all(
         list.map(async (item, i) => {
           try {
@@ -480,9 +477,6 @@ export default function CharmDesigner() {
             addCharm(cleanedSrc)
           } catch (err) {
             console.error(`Charm ${item.sku} failed:`, err)
-          } finally {
-            done++
-            setCartProgress(`${done}/${list.length} charms ready`)
           }
         }),
       )
@@ -614,7 +608,7 @@ export default function CharmDesigner() {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <main className="h-full flex flex-col items-center px-6 pt-6 sm:pt-10 pb-2 overflow-hidden">
+      <main className="h-full max-w-[440px] mx-auto flex flex-col items-center px-6 pt-6 sm:pt-10 pb-2 overflow-hidden">
         <header className="text-center max-w-2xl shrink-0 mb-3 sm:mb-5">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--color-mint-strong)] mb-2">
             Charm Studio
@@ -625,7 +619,7 @@ export default function CharmDesigner() {
               <span className="relative z-10">tuyas</span>
               <span
                 aria-hidden
-                className="absolute inset-x-[-6px] bottom-1 sm:bottom-1.5 h-2.5 sm:h-3 rounded-full bg-[var(--color-coral)]/70 -z-0"
+                className="absolute inset-x-[-6px] bottom-1 sm:bottom-1.5 h-2.5 sm:h-3 rounded-full bg-[var(--color-crocs-green)]/70 -z-0"
               />
             </span>
             .
@@ -651,7 +645,7 @@ export default function CharmDesigner() {
           screen edge so nothing scrolls. */}
       <div
         ref={toolbarRef}
-        className="fixed inset-x-0 bottom-0 z-30 bg-[var(--color-canvas)]/95 backdrop-blur-sm px-4 pt-4 pb-[max(env(safe-area-inset-bottom),1rem)]"
+        className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[440px] z-30 bg-[var(--color-canvas)]/95 backdrop-blur-sm px-4 pt-4 pb-[max(env(safe-area-inset-bottom),1rem)]"
       >
         <div className="max-w-md mx-auto flex flex-col items-center gap-3">
           <div className="flex items-center gap-2">

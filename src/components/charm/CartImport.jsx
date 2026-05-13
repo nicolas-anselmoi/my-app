@@ -26,7 +26,7 @@ export default function CartImport({ onLoad, busy, progress }) {
           type="url"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
-          placeholder="Pega tu carrito de Crocs.cl"
+          placeholder="Ingresa tu carrito de Crocs.cl"
           disabled={busy}
           className="flex-1 min-w-0 bg-transparent text-sm font-medium placeholder:text-gray-400 focus:outline-none disabled:opacity-60"
         />
