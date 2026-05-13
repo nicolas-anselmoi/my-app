@@ -26,7 +26,7 @@ export default function CartImport({ onLoad, busy, progress }) {
           type="url"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
-          placeholder="Paste a Crocs cart link…"
+          placeholder="Pega tu carrito de Crocs.cl"
           disabled={busy}
           className="flex-1 min-w-0 bg-transparent text-sm font-medium placeholder:text-gray-400 focus:outline-none disabled:opacity-60"
         />
@@ -35,7 +35,7 @@ export default function CartImport({ onLoad, busy, progress }) {
           disabled={busy || !url.trim()}
           className="shrink-0 px-4 py-2 rounded-full bg-[var(--color-coral)] text-white text-xs font-extrabold tracking-wide hover:brightness-95 active:scale-[0.98] transition disabled:bg-gray-300 disabled:cursor-not-allowed"
         >
-          {busy ? 'Loading…' : 'Load'}
+          {busy ? 'Cargando…' : 'Cargar'}
         </button>
       </form>
       {busy && progress && (
